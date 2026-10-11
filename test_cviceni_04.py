@@ -109,6 +109,11 @@ def test_dbscan_matches_sklearn_on_blobs() -> None:
     sklearn_model = SklearnDBSCAN(eps=DBSCAN_EPS, min_samples=DBSCAN_MIN_SAMPLES)
     sklearn_labels = sklearn_model.fit_predict(x)
 
+    diff_mask = my_labels != sklearn_labels
+    print(f"Number of differing points: {np.sum(diff_mask)}")
+    print("My labels for these points:", my_labels[diff_mask])
+    print("Sklearn labels for these points:", sklearn_labels[diff_mask])
+
     ari = adjusted_rand_score(sklearn_labels, my_labels)
     assert ari >= 0.99, f"Očekávána shoda s sklearn (ARI >= 0.99), vyšlo {ari:.4f}"
 

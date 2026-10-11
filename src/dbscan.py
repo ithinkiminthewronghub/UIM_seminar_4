@@ -123,11 +123,21 @@ class DBSCAN(Clusterer):
         """
         # assert  Ověřte, že x je typu np.ndarray a je 2D (n_vzorků x n_příznaků)
         # assert  Ověřte, že point_idx je platný index v rozsahu [0, x.shape[0])
-        raise NotImplementedError(
-            "Úkol: Implementujte vyhledání eps-okolí bodu x[point_idx] - pro každý bod "
-            "v x spočítejte self.distance.calculate(x[point_idx], x[i]) a vraťte indexy "
-            "všech bodů, jejichž vzdálenost je <= eps (včetně point_idx samotného)."
-        )
+        assert isinstance(x, np.ndarray)
+        assert x.ndim == 2
+        assert 0 <= point_idx <= x.shape[0]
+
+        neighbours = []
+        target_point_idx = x[point_idx]
+
+        for i in range(x.shape[0]):
+            distance = self.distance.calculate(target_point_idx, x[i])
+
+            if distance <= self.eps:
+                neighbours.append(i)
+
+        return neighbours
+
 
     def fit(self, x: np.ndarray) -> "DBSCAN":
         """
@@ -200,16 +210,52 @@ class DBSCAN(Clusterer):
         DBSCAN
             Vrací self (self.labels_ je po volání této metody naplněno).
         """
-        # assert  Ověřte, že x je typu np.ndarray
-        # assert  Ověřte počet dimenzí (musí být 2D: n_vzorků x n_příznaků)
-        raise NotImplementedError(
-            "Úkol: Implementujte algoritmus DBSCAN podle popisu v docstringu této metody "
-            "- pro každý nenavštívený bod zjistěte jeho eps-okolí přes self._region_query, "
-            "rozhodněte, zda je jádrový (>= self.min_samples sousedů), a pokud ano, "
-            "expandujte kolem něj nový shluk (BFS/DFS). Body, které nejsou jádrové ani "
-            "nejsou dosažitelné z žádného jádrového bodu, označte jako šum (-1). Výsledek "
-            "uložte do self.labels_ a vraťte self."
-        )
+        assert isinstance(x, np.ndarray)
+        assert x.ndim == 2
+
+        n_samples = x.shape[0]
+        labels = np.full(n_samples, -1)
+        visited = np.zeros(n_samples, dtype=bool)
+        current_cluster_id = 0
+
+        for i in range(n_samples):
+            if visited[i]:
+                 continue
+
+            visited[i] = True
+            neighbours = self._region_query(x, i, self.eps)
+
+            if len(neighbours) < self.min_samples:
+                labels[i] = -1
+
+            else:
+                labels[i] = current_cluster_id
+                queue = list(neighbours)
+                head = 0
+
+                while head < len(queue):
+                    p = queue[head]
+                    head += 1
+                    #Border point from a noisy point
+                    if labels[p] == -1:
+                        labels[p] = current_cluster_id
+
+                    if not visited[p]:
+                        visited[p] = True
+                        labels[p] = current_cluster_id
+                        p_neighbours = self._region_query(x, p, self.eps)
+
+                        if len(p_neighbours) > self.min_samples:
+                            for neighbour in sorted(p_neighbours):
+                                if neighbour not in queue:
+                                    queue.append(neighbour)
+
+
+            current_cluster_id += 1
+
+        self.labels_ = labels
+        return self
+
 
     def predict(self) -> np.ndarray:
         """

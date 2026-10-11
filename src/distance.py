@@ -28,115 +28,87 @@ import numpy as np
 
 
 class Distance(ABC):
-    """
-    Abstraktní základní třída pro výpočet vzdálenosti (nepodobnosti)
-    mezi dvěma vektory příznaků.
+    """Abstraktní základ pro metriky vzdálenosti.
 
-    Konkrétní podtřídy implementují vlastnost ``is_metric``, která říká,
-    zda daná míra splňuje axiomy metriky (zejména trojúhelníkovou
-    nerovnost). Např. eukleidovská a manhattanská vzdálenost jsou skutečné
-    metriky, zatímco kosinová vzdálenost (1 - kosinová podobnost) trojúhelníkovou
-    nerovnost obecně nesplňuje, a tedy metrikou není.
+    Každá konkrétní metrika dědí od této třídy a implementuje metodu
+    ``calculate``. Metoda ``create_distance_matrix`` je sdílená a volá
+    ``calculate`` v cyklu — není třeba ji přepisovat.
     """
 
     @property
     @abstractmethod
     def is_metric(self) -> bool:
-        """Vrátí True, pokud vzdálenost splňuje axiomy metriky."""
+        """Vrátí ``True``, pokud vzdálenost splňuje axiomy metriky."""
 
     @abstractmethod
-    def calculate(self, x: np.ndarray, y: np.ndarray) -> float:
-        """
-        Vypočítá vzdálenost (nepodobnost) mezi dvěma 1D vektory příznaků
-        x a y.
+    def calculate(self, point_a: np.ndarray, point_b: np.ndarray) -> float:
+        """Vypočítá vzdálenost mezi dvěma body.
 
-        Parametry
-        ---------
-        x : np.ndarray
-            První vektor příznaků (1D pole).
-        y : np.ndarray
-            Druhý vektor příznaků (1D pole), stejné délky jako x.
+        Úkol:
+            Implementujte výpočet vzdálenosti specifický pro danou metriku.
 
-        Návratová hodnota
-        ------------------
+        Parameters
+        ----------
+        point_a:
+            První bod — pole tvaru ``(n_příznaků,)``.
+        point_b:
+            Druhý bod — pole tvaru ``(n_příznaků,)``.
+
+        Returns
+        -------
         float
-            Nezáporné číslo vyjadřující vzdálenost/nepodobnost mezi x a y.
+            Vzdálenost mezi ``point_a`` a ``point_b``.
         """
+        # assert: Ověřte, že oba vstupy jsou 1D vektory stejné délky
         raise NotImplementedError(
-            "Úkol: Implementujte výpočet vzdálenosti mezi dvěma vektory x a y."
-            )
+            "Úkol: implementujte calculate() — zkopírujte řešení z Cvičení 01."
+        )
 
-    def create_distance_matrix(self, x: np.ndarray) -> np.ndarray:
-        """
-        Sestaví čtvercovou matici vzdáleností pro všechny dvojice vzorků
-        v X.
+    def create_distance_matrix(self, data: np.ndarray) -> np.ndarray:
+        """Vytvoří čtvercovou matici vzdáleností mezi všemi dvojicemi bodů.
 
-        Pro každou dvojici řádků (vzorků) X[i] a X[j] se zavolá
-        self.calculate(X[i], X[j]). Výsledná matice je symetrická
-        (calculate je symetrická funkce svých argumentů) a na diagonále
-        má nuly (vzdálenost vzorku sama od sebe).
+        Matice je symetrická s nulovou diagonálou.
+        Volá ``self.calculate`` pro každou dvojici — implementace metriky
+        není třeba zde duplikovat.
 
-        Poznámka: v tomto cvičení (DBSCAN, spektrální shlukování) se tato
-        metoda přímo nevyužívá - oba algoritmy volají self.calculate()
-        po jednotlivých dvojicích bodů. Metoda je zde ponechána kvůli
-        návaznosti na předchozí cvičení, která ji používají.
+        Parameters
+        ----------
+        data:
+            Příznakový matice tvaru ``(n_bodů, n_příznaků)``.
 
-        Parametry
-        ---------
-        x : np.ndarray
-            Matice dat o rozměru (n_vzorků, n_příznaků).
-
-        Návratová hodnota
-        ------------------
+        Returns
+        -------
         np.ndarray
-            Symetrická matice vzdáleností o rozměru (n_vzorků, n_vzorků)
-            s nulovou diagonálou.
+            Matice vzdáleností tvaru ``(n_bodů, n_bodů)``.
         """
-        n_samples = x.shape[0]
-        distance_matrix = np.zeros((n_samples, n_samples), dtype=float)
-
-        for i in range(n_samples):
-            for j in range(i + 1, n_samples):
-                distance = self.calculate(x[i], x[j])
-                distance_matrix[i, j] = distance
-                distance_matrix[j, i] = distance
-
-        return distance_matrix
+        # assert: Ověřte, že data jsou 2D matice s alespoň 2 body
+        assert data.ndim == 2
+        assert data.shape[0] >= 2
+        n: int = data.shape[0]
+        matrix: np.ndarray = np.zeros((n, n), dtype=float)
+        for i in range(n):
+            for j in range(i + 1, n):
+                dist: float = self.calculate(data[i], data[j])
+                matrix[i, j] = dist
+                matrix[j, i] = dist
+        return matrix
 
 
 class EuclideanDistance(Distance):
-    """Eukleidovská (L2) vzdálenost mezi dvěma vektory."""
+    """ Třída pro výpočet Euklidovské vzdálenosti mezi dvěma vektory.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
 
     @property
     def is_metric(self) -> bool:
-        """Eukleidovská vzdálenost je pravá metrika."""
-        raise NotImplementedError(
-            "Úkol: Implementujte EuclideanDistance.is_metric()"
-            "Vrátí True, pokud vzdálenost splňuje axiomy metriky."
-        )
+        """Vrací True, protože Euklidovská vzdálenost splňuje definici metriky."""
+        return True
 
     def calculate(self, x: np.ndarray, y: np.ndarray) -> float:
-        """
-        Vypočítá eukleidovskou vzdálenost mezi dvěma 1D vektory příznaků
-        x a y.
-
-        Parametry
-        ---------
-        x : np.ndarray
-            První vektor příznaků (1D pole).
-        y : np.ndarray
-            Druhý vektor příznaků (1D pole), stejné délky jako x.
-
-        Návratová hodnota
-        ------------------
-        float
-            Eukleidovská vzdálenost mezi x a y.
-        """
-        # assert  Ověřte, že x i y jsou typu np.ndarray
-        # assert  Ověřte, že x a y mají stejný tvar (stejný počet příznaků)
-        raise NotImplementedError(
-            "Úkol: Implementujte výpočet eukleidovskou vzdálenost mezi dvěma vektory x a y."
-            )
+        """Spočte Euklidovskou vzdálenost mezi 1D vektory x a y."""
+        return float(np.sqrt(np.sum((x - y) ** 2)))
 
 
 class ManhattanDistance(Distance):

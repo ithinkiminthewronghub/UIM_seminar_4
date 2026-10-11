@@ -86,13 +86,47 @@ def adjusted_rand_index(labels_true: np.ndarray, labels_pred: np.ndarray) -> flo
     """
     # assert  Ověřte, že labels_true i labels_pred jsou typu np.ndarray
     # assert  Ověřte, že labels_true a labels_pred jsou 1D pole stejné délky
-    raise NotImplementedError(
-        "Úkol: (BONUS) Implementujte výpočet Adjusted Rand Index (ARI) mezi "
-        "labels_true a labels_pred pomocí pair-countingu: sestavte "
-        "kontingenční tabulku n_ij (skutečný štítek i vs. predikovaný "
-        "štítek j), spočtěte řádkové/sloupcové součty a_i, b_j a celkový "
-        "počet vzorků n, a dosaďte do vzorce ARI = (sum_ij C(n_ij,2) - "
-        "[sum_i C(a_i,2) * sum_j C(b_j,2)] / C(n,2)) / (0.5 * [sum_i "
-        "C(a_i,2) + sum_j C(b_j,2)] - [sum_i C(a_i,2) * sum_j C(b_j,2)] / "
-        "C(n,2)), kde C(k,2) = k*(k-1)/2."
-    )
+    assert isinstance(labels_true, np.ndarray)
+    assert isinstance(labels_pred, np.ndarray)
+    assert labels_true.ndim == 1
+    assert labels_pred.ndim == 1
+    assert labels_true.shape[0] == labels_pred.shape[0]
+
+    n = labels_true.shape[0]
+
+    classes, class_idx = np.unique(labels_true, return_inverse=True)
+    clusters, cluster_idx = np.unique(labels_pred, return_inverse=True)
+
+    n_classes = len(classes)
+    n_clusters = len(clusters)
+
+    contingency = np.zeros((n_classes, n_clusters))
+    np.add.at(contingency, (class_idx, cluster_idx), 1)
+
+    def comb2(k):
+        return k * (k - 1) / 2.0
+
+    a_i = contingency.sum(axis=1)
+    b_j = contingency.sum(axis=0)
+
+    sum_n_ij_comb = np.sum(comb2(contingency))
+    sum_a_i_comb = np.sum(comb2(a_i))
+    sum_b_j_comb = np.sum(comb2(b_j))
+    total_comb = comb2(n)
+
+    if total_comb == 0 or (sum_a_i_comb == total_comb and sum_b_j_comb == total_comb):
+        return 1.0
+
+    index = sum_n_ij_comb
+    expected_index = (sum_a_i_comb * sum_b_j_comb) / total_comb
+    max_index = 0.5 * (sum_a_i_comb + sum_b_j_comb)
+
+    denominator = max_index - expected_index
+    if denominator == 0:
+        return 1.0
+
+    ari = (index - expected_index) / denominator
+    return float(ari)
+
+
+

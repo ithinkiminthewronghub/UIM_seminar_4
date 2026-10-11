@@ -175,13 +175,27 @@ class SpectralClustering(Clusterer):
         np.ndarray
             Symetrická afinitní matice o rozměru (n_vzorků, n_vzorků).
         """
-        # assert  Ověřte, že x je typu np.ndarray
-        # assert  Ověřte počet dimenzí x (musí být 2D: n_vzorků x n_příznaků)
-        raise NotImplementedError(
-            "Úkol: Implementujte sestavení afinitní matice W pomocí Gaussova jádra "
-            "W[i, j] = exp(-d(i, j)^2 / (2 * sigma^2)),"
-            "kde d(i, j) = self.distance.calculate(x[i], x[j])."
-        )
+
+        assert isinstance(x, np.ndarray)
+        assert x.ndim == 2
+
+        n_samples = x.shape[0]
+        W = np.zeros((n_samples, n_samples))
+        for i in range(n_samples):
+            for j in range(i, n_samples):
+                if i == j:
+                    W[i, j] = 1.0
+                else:
+                    distance = self.distance.calculate(x[i], x[j])
+                    val = np.exp(-(distance**2) / (2 * (self.sigma**2)))
+                    W[i, j] = val
+                    W[j, i] = val
+
+        return W
+
+
+
+
 
     def _laplacian(self, w: np.ndarray) -> np.ndarray:
         """
@@ -213,10 +227,13 @@ class SpectralClustering(Clusterer):
             (n_vzorků, n_vzorků).
         """
         # assert  Ověřte, že w je čtvercová (a symetrická) matice
-        raise NotImplementedError(
-            "Úkol: Implementujte sestavení Laplaciánu grafu L = D - W, kde D je diagonální "
-            "matice stupňů (součty řádků W na diagonále)."
-        )
+        assert w.shape[0] == w.shape[1]
+        assert w.ndim == 2
+
+        degrees = np.sum(w, axis=1)
+        d = np.diag(degrees)
+        l = d - w
+        return l
 
     def _spectral_embedding(self, l: np.ndarray, k: int) -> Tuple[np.ndarray, np.ndarray]:
         """
@@ -265,8 +282,11 @@ class SpectralClustering(Clusterer):
                 tzv. eigengapu).
         """
         # assert  Ověřte, že l je čtvercová matice
-        raise NotImplementedError(
-            "Úkol: Implementujte spektrální embedding - pomocí numpy.linalg.eigh vypočítejte "
-            "vlastní čísla a vektory l, vyberte k vlastních vektorů odpovídajících k nejmenším "
-            "vlastním číslům a poskládejte je jako sloupce do matice embeddingu o rozměru (n, k)."
-        )
+        assert isinstance(l, np.ndarray)
+        assert l.ndim == 2 and l.shape[0] == l.shape[1]
+
+        eigenvalues, eigenvectors = np.linalg.eigh(l)
+
+        embedding = eigenvectors[:, 1:k + 1]
+
+        return embedding, eigenvalues
